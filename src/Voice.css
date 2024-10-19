@@ -1,0 +1,111 @@
+/* Voice.css */
+
+/* Ensure the body doesn't mess with the layout globally */
+body {
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    background-color: #f0f0f0;
+    display: flex;
+    flex-direction: column; /* Change to column to allow content to stack */
+  }
+  
+  /* Adjust the main container for the speech page */
+  .container {
+    flex: 1; /* Take available space */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center; /* Center the circle and button vertically */
+    gap: 20px;
+    text-align: center;
+    padding-top: 80px; /* Add space for navbar */
+  }
+  
+  /* Navbar styles to avoid layout shift */
+  .navbar {
+    width: 100%;
+    padding: 10px 20px;
+    background-color: #4285f4;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: fixed; /* Keep the navbar fixed at the top */
+    top: 0;
+    left: 0;
+    z-index: 1000;
+  }
+  
+  /* Prevent overlap with the navbar */
+  .navbar a {
+    color: white;
+    text-decoration: none;
+    margin: 0 10px;
+  }
+  
+  /* Circle and robot image styles */
+  .circle {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  .robot-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+  }
+  
+  /* Microphone button styling */
+  .microphone-button {
+    background-color: #4caf50;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    padding: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.3s, transform 0.3s;
+    font-size: 32px;
+    color: white;
+  }
+  
+  .microphone-button:hover {
+    background-color: #45a049;
+    transform: scale(1.1);
+  }
+  
+  .microphone-button.recording {
+    background-color: red;
+    animation: pulse 1s infinite;
+  }
+  
+  /* Pulsing animation */
+  @keyframes pulse {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.2);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+  
+  /* Transcript text styling */
+  .transcript {
+    font-size: 18px;
+    color: #333;
+    margin-top: 10px;
+  }
+  
