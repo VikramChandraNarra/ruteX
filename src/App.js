@@ -5,30 +5,39 @@ import Map from './MapComponent';
 import Home from './Home';
 import Chatbot from './Chatbot';
 import NavBar from './NavBar';
-import { Box } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import SpeechToText from './SpeechToText';
 import Voice from './Voice';
-
+import Loading from './Loading';
 
 function App() {
   return (
     <Router>
-      <NavBar />
-      <Box p={4}>
-        <Routes>
-          {/* Home Route */}
-          <Route path="/" element={<Home />} />
+      <Flex height="100vh" overflow="hidden">
+        {/* Navbar on the left */}
+        <NavBar />
 
-          {/* Chat Route */}
-          <Route path="/chat" element={<Chatbot />} />
+        {/* Content area shifted to the right */}
+        <Box flex="1" ml="80px" overflowY="auto">
+          <Routes>
+            {/* Home Route */}
+            <Route path="/" element={<Home />} />
 
-          {/* Map Route */}
-          <Route path="/map" element={<Map />} />
-          <Route path="/speech" element={<SpeechToText />} />
-          <Route path="/voice" element={<Voice />} />
+            {/* Chat Route */}
+            <Route path="/chat" element={<Chatbot />} />
 
-        </Routes>
-      </Box>
+            {/* Map Route */}
+            <Route path="/map" element={<Map />} />
+            
+            {/* Speech and Voice Routes */}
+            <Route path="/speech" element={<SpeechToText />} />
+            <Route path="/voice" element={<Voice />} />
+
+            {/* Loading Route */}
+            <Route path="/loading" element={<Loading />} />
+          </Routes>
+        </Box>
+      </Flex>
     </Router>
   );
 }

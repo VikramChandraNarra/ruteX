@@ -20,6 +20,7 @@ import {
   FaTrain,
   FaCar,
   FaBicycle,
+  FaRobot,
 } from 'react-icons/fa';
 import {
   useJsApiLoader,
@@ -29,6 +30,7 @@ import {
   DirectionsRenderer,
   TrafficLayer,
 } from '@react-google-maps/api';
+import { GiBrain } from 'react-icons/gi';
 
 const center = { lat: 48.8584, lng: 2.2945 };
 
@@ -65,6 +67,7 @@ function Home() {
   if (!isLoaded) {
     return <SkeletonText />;
   }
+
 
   async function calculateRoute() {
     if (!originRef.current.value || !destinationRef.current.value) {
@@ -167,7 +170,7 @@ function Home() {
         setDuration(results.routes[0].legs[0].duration_in_traffic.text);
         setIsTraffic(
           results.routes[0].legs[0].duration.value <
-            results.routes[0].legs[0].duration_in_traffic.value
+          results.routes[0].legs[0].duration_in_traffic.value
         );
       } else {
         setDuration(results.routes[0].legs[0].duration.text);
@@ -209,41 +212,207 @@ function Home() {
     destinationRef.current.value = '';
   }
 
-  function getTransportIcon(mode) {
+  function getTransportIcon(mode, isSelected) {
+    const color = isSelected ? 'white' : 'black'; // White if selected, black otherwise
     switch (mode.toLowerCase()) {
       case 'walking':
-        return <FaWalking color="green" />;
+        return <FaWalking color={color} />;
       case 'transit':
-        return <FaBus color="blue" />;
-      case 'train':
-        return <FaTrain color="orange" />;
+        return <FaBus color={color} />;
       case 'driving':
-        return <FaCar color="red" />;
+        return <FaCar color={color} />;
       case 'bicycling':
-        return <FaBicycle color="teal" />;
+        return <FaBicycle color={color} />;
+      case 'ai':
+        return <FaRobot color={color} />;
       default:
-        return <FaCar color="gray" />;
+        return <FaCar color={color} />;
     }
   }
 
   return (
-    <Flex position="relative" flexDirection="column" h="100vh" w="100vw" m={0} p={0} overflow="hidden">
-      <Box position="absolute" left={0} top={0} h="100%" w="100%" m={0} p={0}>
+    <Flex height="100vh" overflow="hidden">
+      {/* Left side - Controls (Filters) */}
+      <Box
+        width="400px"
+        minWidth="400px" // Ensure it doesn't shrink below 400px
+        bgColor="white"
+        shadow="base"
+        p={4}
+        zIndex="modal"
+        overflowY="auto"
+        overflowX="hidden" // Prevent horizontal scroll
+      >
+        <IconButton
+          icon={showFilters ? <FaTimes /> : <FaBars />}
+          aria-label="Toggle Filters"
+          mb={4}
+          onClick={() => setShowFilters(!showFilters)}
+          bgColor="white"
+          color="black"
+        />
+  
+        {showFilters && (
+          <>
+            <VStack spacing={2} mb={4}>
+              <Box flexGrow={1} width="80%" zIndex="modal">
+                <Autocomplete>
+                  <Input
+                    type="text"
+                    placeholder="Origin"
+                    ref={originRef}
+                    color="black"
+                    bgColor="white"
+                    borderColor="gray.300"
+                    _placeholder={{ color: 'gray.500' }}
+                  />
+                </Autocomplete>
+              </Box>
+              <Box flexGrow={1} width="80%" zIndex="modal">
+                <Autocomplete>
+                  <Input
+                    type="text"
+                    placeholder="Destination"
+                    ref={destinationRef}
+                    color="black"
+                    bgColor="white"
+                    borderColor="gray.300"
+                    _placeholder={{ color: 'gray.500' }}
+                  />
+                </Autocomplete>
+              </Box>
+  
+              <Button color="#6581BF" width="80%" onClick={calculateRoute}>
+                Calculate Route
+              </Button>
+            </VStack>
+  
+            <ButtonGroup isAttached variant="outline" mb={4} width="100%">
+              {travelModes.map((mode) => (
+                <IconButton
+                  key={mode}
+                  onClick={() => setTravelMode(mode)}
+                  colorScheme={travelMode === mode ? 'pink' : 'gray'}
+                  bg={travelMode === mode ? '#6581BF' : 'white'}
+                  color={travelMode === mode ? 'white' : 'black'}
+                  icon={getTransportIcon(mode, travelMode === mode)}
+                  aria-label={mode}
+                  width="100%"
+                />
+              ))}
+            </ButtonGroup>
+  
+            <VStack align="flex-start" spacing={2} mt={2}>
+              <HStack spacing={4} alignItems="center">
+                <Text
+                  fontSize="2xl"
+                  fontWeight="bold"
+                  color={isTraffic ? 'red' : 'black'}
+                >
+                  {duration}
+                </Text>
+                {distance && (
+                  <Text fontSize="lg" color="gray.500">
+                    ({distance})
+                  </Text>
+                )}
+              </HStack>
+  
+              {routeInfo && (
+                <Box mt={4}>
+                  <Text fontSize="md" fontWeight="semibold" color="black">
+                    {routeInfo.description}
+                  </Text>
+                  {routeInfo.efficiency && (
+                    <Text fontSize="sm" color="gray.600">
+                      Efficiency: {routeInfo.efficiency}
+                    </Text>
+                  )}
+                  {routeInfo.health && (
+                    <Text fontSize="sm" color="gray.600">
+                      Health: {routeInfo.health}
+                    </Text>
+                  )}
+                </Box>
+              )}
+  
+              {routeSteps && routeSteps.length > 0 && (
+                <Box mt={4} w="100%">
+                  <Text fontSize="lg" fontWeight="bold" mb={2} color="black">
+                    Steps:
+                  </Text>
+                  <Stack spacing={4}>
+                    {routeSteps.map((step, index) => (
+                      <HStack
+                        key={index}
+                        p={3}
+                        borderWidth="1px"
+                        borderRadius="lg"
+                        alignItems="flex-start"
+                        spacing={4}
+                      >
+                        <Box fontSize="2xl">
+                          {getTransportIcon(step.modeOfTransport)}
+                        </Box>
+                        <Box>
+                          <Text
+                            fontWeight="semibold"
+                            fontSize="md"
+                            color="black"
+                          >
+                            {step.modeOfTransport.charAt(0).toUpperCase() +
+                              step.modeOfTransport.slice(1)}{' '}
+                            - {step.timeTaken}
+                          </Text>
+                          {step.nameOfTransport && (
+                            <Text fontSize="sm" color="gray.600">
+                              {step.nameOfTransport}
+                            </Text>
+                          )}
+                          <Text fontSize="sm" color="gray.600">
+                            From: {step.start}
+                          </Text>
+                          <Text fontSize="sm" color="gray.600">
+                            To: {step.end}
+                          </Text>
+                          {step.calories && (
+                            <Text fontSize="sm" color="gray.600">
+                              Calories Burned: {step.calories}
+                            </Text>
+                          )}
+                          {step.totalCost && (
+                            <Text fontSize="sm" color="gray.600">
+                              Cost: ${step.totalCost}
+                            </Text>
+                          )}
+                        </Box>
+                      </HStack>
+                    ))}
+                  </Stack>
+                </Box>
+              )}
+            </VStack>
+          </>
+        )}
+      </Box>
+  
+      {/* Right side - Google Map */}
+      <Box flex="1" position="relative" overflow="hidden">
         <GoogleMap
           center={center}
           zoom={15}
-          mapContainerStyle={{ width: '100%', height: '100%', margin: '0', padding: '0' }}
+          mapContainerStyle={{ width: '100%', height: '100%' }}
           options={{
             zoomControl: true,
             streetViewControl: false,
             mapTypeControl: false,
-            fullscreenControl: true,
+            fullscreenControl: false,
           }}
           onLoad={(map) => setMap(map)}
         >
           <TrafficLayer />
           <Marker position={center} />
-
+  
           {travelMode === 'AI' ? (
             directionsResponses &&
             directionsResponses.map((response, index) => (
@@ -263,180 +432,10 @@ function Home() {
           )}
         </GoogleMap>
       </Box>
-
-      <IconButton
-        icon={showFilters ? <FaTimes /> : <FaBars />}
-        aria-label="Toggle Filters"
-        position="absolute"
-        top={4}
-        left={4}
-        zIndex="modal"
-        onClick={() => setShowFilters(!showFilters)}
-        bgColor="white"
-        color="black"
-      />
-
-      {showFilters && (
-        <Box
-          position="absolute"
-          top={16}
-          left={0}
-          p={4}
-          borderRadius="lg"
-          m={4}
-          bgColor="white"
-          shadow="base"
-          minW="container.md"
-          zIndex="modal"
-        >
-          <HStack spacing={2} mb={4}>
-            <Box flexGrow={1} zIndex="modal">
-              <Autocomplete>
-                <Input
-                  type="text"
-                  placeholder="Origin"
-                  ref={originRef}
-                  color="black"
-                  bgColor="white"
-                  borderColor="gray.300"
-                  _placeholder={{ color: 'gray.500' }}
-                />
-              </Autocomplete>
-            </Box>
-            <Box flexGrow={1} zIndex="modal">
-              <Autocomplete>
-                <Input
-                  type="text"
-                  placeholder="Destination"
-                  ref={destinationRef}
-                  color="black"
-                  bgColor="white"
-                  borderColor="gray.300"
-                  _placeholder={{ color: 'gray.500' }}
-                />
-              </Autocomplete>
-            </Box>
-
-            <Button colorScheme="pink" onClick={calculateRoute}>
-              Calculate Route
-            </Button>
-            <IconButton
-              aria-label="Clear Route"
-              icon={<FaTimes />}
-              onClick={clearRoute}
-              bgColor="white"
-              color="black"
-            />
-          </HStack>
-
-          <ButtonGroup isAttached variant="outline" mb={4}>
-            {travelModes.map((mode) => (
-              <Button
-                key={mode}
-                onClick={() => setTravelMode(mode)}
-                colorScheme={travelMode === mode ? 'pink' : 'gray'}
-                bg={travelMode === mode ? 'pink.500' : 'white'}
-                color={travelMode === mode ? 'white' : 'black'}
-              >
-                {mode.charAt(0) + mode.slice(1).toLowerCase()}
-              </Button>
-            ))}
-          </ButtonGroup>
-
-          <VStack align="flex-start" spacing={2} mt={2}>
-            <HStack spacing={4} alignItems="center">
-              <Text
-                fontSize="2xl"
-                fontWeight="bold"
-                color={isTraffic ? 'red' : 'black'}
-              >
-                {duration}
-              </Text>
-              {distance && (
-                <Text fontSize="lg" color="gray.500">
-                  ({distance})
-                </Text>
-              )}
-            </HStack>
-
-            {routeInfo && (
-              <Box mt={4}>
-                <Text fontSize="md" fontWeight="semibold" color="black">
-                  {routeInfo.description}
-                </Text>
-                {routeInfo.efficiency && (
-                  <Text fontSize="sm" color="gray.600">
-                    Efficiency: {routeInfo.efficiency}
-                  </Text>
-                )}
-                {routeInfo.health && (
-                  <Text fontSize="sm" color="gray.600">
-                    Health: {routeInfo.health}
-                  </Text>
-                )}
-              </Box>
-            )}
-
-            {routeSteps && routeSteps.length > 0 && (
-              <Box mt={4} w="100%">
-                <Text fontSize="lg" fontWeight="bold" mb={2} color="black">
-                  Steps:
-                </Text>
-                <Stack spacing={4}>
-                  {routeSteps.map((step, index) => (
-                    <HStack
-                      key={index}
-                      p={3}
-                      borderWidth="1px"
-                      borderRadius="lg"
-                      alignItems="flex-start"
-                      spacing={4}
-                    >
-                      <Box fontSize="2xl">
-                        {getTransportIcon(step.modeOfTransport)}
-                      </Box>
-                      <Box>
-                        <Text
-                          fontWeight="semibold"
-                          fontSize="md"
-                          color="black"
-                        >
-                          {step.modeOfTransport.charAt(0).toUpperCase() +
-                            step.modeOfTransport.slice(1)}{' '}
-                          - {step.timeTaken}
-                        </Text>
-                        {step.nameOfTransport && (
-                          <Text fontSize="sm" color="gray.600">
-                            {step.nameOfTransport}
-                          </Text>
-                        )}
-                        <Text fontSize="sm" color="gray.600">
-                          From: {step.start}
-                        </Text>
-                        <Text fontSize="sm" color="gray.600">
-                          To: {step.end}
-                        </Text>
-                        {step.calories && (
-                          <Text fontSize="sm" color="gray.600">
-                            Calories Burned: {step.calories}
-                          </Text>
-                        )}
-                        {step.totalCost && (
-                          <Text fontSize="sm" color="gray.600">
-                            Cost: ${step.totalCost}
-                          </Text>
-                        )}
-                      </Box>
-                    </HStack>
-                  ))}
-                </Stack>
-              </Box>
-            )}
-          </VStack>
-        </Box>
-      )}
     </Flex>
   );
+  
+
 }
 
 export default Home;

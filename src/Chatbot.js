@@ -1,82 +1,67 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Box, Flex, Input, Button, VStack, IconButton, Text, Center, Textarea } from '@chakra-ui/react';
-import { FaMicrophone, FaStop } from 'react-icons/fa'; // Import microphone and stop icons
+import {
+  Box,
+  Flex,
+  Button,
+  VStack,
+  Text,
+  Center,
+  Textarea,
+  Stack,
+  List,
+  ListItem,
+  IconButton,
+  HStack,
+} from '@chakra-ui/react';
+import { FaBars, FaTrash, FaPlus } from 'react-icons/fa';
 import Message from './Message';
 import Direction from './Direction';
 import axios from 'axios';
 
 const Chatbot = () => {
-  const [messages, setMessages] = useState([]); // Start with an empty message array
-  const [userInput, setUserInput] = useState('');
-  const [isRecording, setIsRecording] = useState(false);
-  const mediaRecorderRef = useRef(null);
-  const audioChunksRef = useRef([]);
-  const chatEndRef = useRef(null);
+  const [sessions, setSessions] = useState(() => {
+    const savedSessions = localStorage.getItem('chatSessions');
+    return savedSessions ? JSON.parse(savedSessions) : {};
+  });
 
-  // Function to scroll to the bottom when a new message appears
-  const scrollToBottom = () => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  const [currentSessionId, setCurrentSessionId] = useState(() => {
+    const lastSession = localStorage.getItem('lastSession');
+    return lastSession || generateSessionId();
+  });
+
+  const [messages, setMessages] = useState(() => sessions[currentSessionId] || []);
+  const [userInput, setUserInput] = useState('');
+  const [isMenuOpen, setIsMenuOpen] = useState(true); // Control for sidebar visibility
+  const chatEndRef = useRef(null);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorderRef.current = new MediaRecorder(stream);
+  useEffect(() => {
+    localStorage.setItem('chatSessions', JSON.stringify(sessions));
+  }, [sessions]);
 
-      mediaRecorderRef.current.ondataavailable = (event) => {
-        audioChunksRef.current.push(event.data);
-      };
+  useEffect(() => {
+    setMessages(sessions[currentSessionId] || []);
+    localStorage.setItem('lastSession', currentSessionId);
+  }, [currentSessionId, sessions]);
 
-      mediaRecorderRef.current.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        await sendAudioToDeepgram(audioBlob);
-        audioChunksRef.current = []; // Clear the audio chunks
-      };
-
-      mediaRecorderRef.current.start();
-      setIsRecording(true);
-    } catch (error) {
-      console.error('Error accessing microphone:', error);
-    }
+  const scrollToBottom = () => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const stopRecording = () => {
-    mediaRecorderRef.current.stop();
-    setIsRecording(false);
-  };
-
-  const sendAudioToDeepgram = async (audioBlob) => {
-    const formData = new FormData();
-    formData.append('audio', audioBlob, 'audio.webm');
-
-    try {
-      const response = await axios.post('https://api.deepgram.com/v1/listen', formData, {
-        headers: {
-          'Authorization': `Token 4e5fba3a70b31cd5e060580028430781c372ad7a`,
-          'Content-Type': 'multipart/form-data',
-        },
-        params: {
-          model: 'nova-2',
-          language: 'en',
-          smart_format: true,
-        },
-      });
-
-      const { transcript } = response.data.results.channels[0].alternatives[0];
-      setUserInput(transcript); // Insert the transcribed text as the user input
-    } catch (error) {
-      console.error('Error sending audio to Deepgram:', error);
-    }
+  const generateSessionId = () => {
+    const now = new Date();
+    return now.toLocaleString(); // Generate a readable date-time string as session ID
   };
 
   const handleSendMessage = () => {
     if (userInput.trim()) {
       const newMessage = { text: userInput, sender: 'user', type: 'text' };
-      setMessages([...messages, newMessage]);
+      const updatedMessages = [...messages, newMessage];
+      setMessages(updatedMessages);
+      updateSession(currentSessionId, updatedMessages);
 
       const requestData = { input: userInput };
 
@@ -89,13 +74,15 @@ const Chatbot = () => {
       })
         .then((response) => response.json())
         .then((data) => {
-          console.log('API Response:', data);
           const botReply = {
-            type: 'component',
+            type: 'route',
             sender: 'bot',
-            component: <Direction data={data.route1Info} route={data.route1} />,
+            data: data.route1Info,
+            route: data.route1,
           };
-          setMessages((prevMessages) => [...prevMessages, botReply]);
+          const updatedMessagesWithBot = [...updatedMessages, botReply];
+          setMessages(updatedMessagesWithBot);
+          updateSession(currentSessionId, updatedMessagesWithBot);
         })
         .catch((error) => {
           console.error('Error:', error);
@@ -104,101 +91,145 @@ const Chatbot = () => {
             sender: 'bot',
             type: 'text',
           };
-          setMessages((prevMessages) => [...prevMessages, errorMessage]);
+          const updatedMessagesWithError = [...updatedMessages, errorMessage];
+          setMessages(updatedMessagesWithError);
+          updateSession(currentSessionId, updatedMessagesWithError);
         });
 
-      setUserInput(''); // Clear the input field
+      setUserInput('');
     }
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      handleSendMessage();
+  const updateSession = (sessionId, updatedMessages) => {
+    setSessions((prevSessions) => ({
+      ...prevSessions,
+      [sessionId]: updatedMessages,
+    }));
+  };
+
+  const startNewChat = () => {
+    const newSessionId = generateSessionId();
+    setCurrentSessionId(newSessionId);
+    setSessions((prevSessions) => ({
+      ...prevSessions,
+      [newSessionId]: [],
+    }));
+  };
+
+  const deleteChat = (sessionId) => {
+    const updatedSessions = { ...sessions };
+    delete updatedSessions[sessionId];
+    setSessions(updatedSessions);
+
+    if (sessionId === currentSessionId) {
+      const newCurrentSessionId = Object.keys(updatedSessions)[0] || generateSessionId();
+      setCurrentSessionId(newCurrentSessionId);
     }
+  };
+
+  const toggleMenu = () => {
+    setIsMenuOpen((prev) => !prev);
+  };
+
+  const renderMessage = (message, index) => {
+    if (message.type === 'route') {
+      return <Direction key={index} data={message.data} route={message.route} />;
+    }
+    return <Message key={index} text={message.text} sender={message.sender} type={message.type} />;
   };
 
   return (
-    <Flex
-      direction="column"
-      maxW="100%"
-      height="100vh"
-      margin="0 auto"
-      borderWidth="1px"
-      borderRadius="lg"
-      boxShadow="md"
-      backgroundColor="gray.50"
-    >
-      {/* Conditional rendering: Show greeting when no messages yet */}
-      {messages.length === 0 ? (
-        <Center flexGrow={1} padding={4}>
-          <VStack spacing={4} align="center">
-            <Text fontSize="3xl" fontWeight="bold" textAlign="center" color="black">
-              Where would you like to go today?
-            </Text>
-            <Flex borderTopWidth="1px" backgroundColor="white" align="center" width="100%">   
-            <Textarea
-              placeholder="Type your destination..."
-              value={userInput}
-              onChange={(e) => setUserInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              minHeight="40px" // Minimum height
-              borderRadius="md"
-              color="black"
-              backgroundColor="#F4F4F4"
-              _placeholder={{ color: 'gray.500' }}
-              overflow="show" // Prevents scrollbars
-              resize="vertical" // Allow vertical resizing
-              maxHeight="200px" // Set a max height for better UX
+    <Flex height="100vh" backgroundColor="gray.50">
+      {/* Sidebar for Chat Sessions */}
+      {isMenuOpen && (
+        <Box width="25%" borderRight="1px solid lightgray" padding={4} overflowY="auto">
+          <HStack justifyContent="space-between" marginBottom={4}>
+            <IconButton
+              icon={<FaBars />}
+              onClick={toggleMenu}
+              aria-label="Collapse Menu"
+              size="md"
+              colorScheme="blue"
             />
-              <Button colorScheme="blue" onClick={handleSendMessage} borderRadius="full">
-                Send
-              </Button>
-            </Flex>
-          </VStack>
-        </Center>
-      ) : (
-        <Box flexGrow={1} padding={4} overflowY="auto">
-          <VStack spacing={4} align="stretch">
-            {messages.map((message, index) => (
-              <Message
-                key={index}
-                text={message.text}
-                sender={message.sender}
-                type={message.type}
-                component={message.component}
-              />
+            <IconButton
+              icon={<FaPlus />}
+              onClick={startNewChat}
+              aria-label="Start New Chat"
+              size="md"
+              colorScheme="green"
+            />
+          </HStack>
+          <List spacing={2}>
+            {Object.keys(sessions).map((sessionId) => (
+              <ListItem
+                key={sessionId}
+                padding={2}
+                borderRadius="md"
+                backgroundColor={sessionId === currentSessionId ? 'blue.100' : 'white'}
+                cursor="pointer"
+                display="flex"
+                justifyContent="space-between"
+                alignItems="center"
+                onClick={() => setCurrentSessionId(sessionId)}
+              >
+                <Text>{sessionId}</Text>
+                <IconButton
+                  icon={<FaTrash />}
+                  size="sm"
+                  colorScheme="red"
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevent triggering session change
+                    deleteChat(sessionId);
+                  }}
+                  aria-label="Delete Chat"
+                />
+              </ListItem>
             ))}
-            <div ref={chatEndRef}></div>
-          </VStack>
+          </List>
         </Box>
       )}
 
-      {/* Input and controls at the bottom */}
-      {/* <Flex padding={4} borderTopWidth="1px" backgroundColor="white" align="center">
-        <Input
-          placeholder="Send a message..."
-          value={userInput}
-          onChange={(e) => setUserInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          mr={2}
-          borderRadius="full"
-          color="black"
-          backgroundColor="white"
-          borderColor="black"
-          _placeholder={{ color: 'gray.500' }}
-        />
-        <IconButton
-          aria-label={isRecording ? 'Stop Recording' : 'Start Recording'}
-          icon={isRecording ? <FaStop /> : <FaMicrophone />}
-          onClick={isRecording ? stopRecording : startRecording}
-          colorScheme={isRecording ? 'red' : 'blue'}
-          borderRadius="full"
-          mr={2}
-        />
-        <Button colorScheme="blue" onClick={handleSendMessage} borderRadius="full">
-          Send
-        </Button>
-      </Flex> */}
+      {/* Chat Area */}
+      <Flex direction="column" width={isMenuOpen ? '75%' : '100%'} padding={4}>
+
+        <Box flexGrow={1} overflowY="auto" padding={4}>
+          {messages.length === 0 ? (
+            <Center flexGrow={1} padding={4}>
+              <VStack spacing={4} align="center">
+                <Text fontSize="3xl" fontWeight="bold" textAlign="center" color="black">
+                  Where would you like to go today?
+                </Text>
+                <Flex align="center" gap={2} width="100%" padding={2} backgroundColor="#F4F4F4" borderRadius="md" boxShadow="sm">
+                  <Textarea
+                    placeholder="Type your destination..."
+                    value={userInput}
+                    onChange={(e) => setUserInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                    flex={1}
+                    minHeight="40px"
+                    borderRadius="lg"
+                    color="black"
+                    backgroundColor="#F4F4F4"
+                    _placeholder={{ color: 'gray.500' }}
+                    resize="vertical"
+                    maxHeight="150px"
+                    borderColor="transparent"
+                    focusBorderColor="blue.300"
+                  />
+                  <Button colorScheme="blue" onClick={handleSendMessage} borderRadius="md" paddingX={6} height="40px">
+                    Send
+                  </Button>
+                </Flex>
+              </VStack>
+            </Center>
+          ) : (
+            <VStack spacing={4} align="stretch">
+              {messages.map((message, index) => renderMessage(message, index))}
+              <div ref={chatEndRef}></div>
+            </VStack>
+          )}
+        </Box>
+      </Flex>
     </Flex>
   );
 };

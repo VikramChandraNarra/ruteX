@@ -4,29 +4,23 @@ import { Box, Flex, Text } from '@chakra-ui/react';
 const Message = ({ text, sender, type, component }) => {
   const isUser = sender === 'user';
 
-  if (type === 'component') {
-    return (
-      <Flex justify={isUser ? 'flex-end' : 'flex-start'}>
-        <Box maxW="75%" borderRadius="lg" padding={2}>
-          {component}
-        </Box>
-      </Flex>
-    );
-  }
-
   return (
-    <Flex justify={isUser ? 'flex-end' : 'flex-start'}>
+    <Flex
+      justify={isUser ? 'flex-end' : 'flex-start'}
+      px={4} // Add horizontal padding to bring messages closer to the center
+    >
       <Box
-        maxW="75%"
-        bg={isUser ? 'blue.500' : 'gray.100'}
+        maxW="70%" // Slightly reduce the max width for better appearance
+        bg={type === 'component' ? 'transparent' : isUser ? 'blue.500' : 'gray.100'}
         color={isUser ? 'white' : 'black'}
         px={4}
         py={2}
         borderRadius="lg"
         borderBottomRightRadius={isUser ? 0 : 'lg'}
         borderBottomLeftRadius={!isUser ? 0 : 'lg'}
+        marginY={2} // Add some vertical space between messages
       >
-        <Text fontSize="md">{text}</Text>
+        {type === 'component' ? component : <Text fontSize="md">{text}</Text>}
       </Box>
     </Flex>
   );
