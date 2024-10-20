@@ -14,9 +14,9 @@ import { FaHome, FaComments, FaMap, FaMicrophone, FaHeadphones } from 'react-ico
 const Links = [
   { name: 'Home', path: '/', icon: <FaHome /> },
   { name: 'Chat', path: '/chat', icon: <FaComments /> },
-  { name: 'Map', path: '/map', icon: <FaMap /> },
-  { name: 'Speech', path: '/speech', icon: <FaMicrophone /> },
-  { name: 'Voice', path: '/voice', icon: <FaHeadphones /> },
+  // { name: 'Map', path: '/map', icon: <FaMap /> },
+  // { name: 'Speech', path: '/speech', icon: <FaMicrophone /> },
+  { name: 'Voice', path: '/voice', icon: <FaMicrophone /> },
 ];
 
 const NavLink = ({ to, icon, label }) => (

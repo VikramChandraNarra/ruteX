@@ -12,11 +12,15 @@ import {
   ListItem,
   IconButton,
   HStack,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+  Input,
 } from '@chakra-ui/react';
-import { FaBars, FaTrash, FaPlus } from 'react-icons/fa';
+import { FaBars, FaPlus, FaEllipsisV } from 'react-icons/fa';
 import Message from './Message';
 import Direction from './Direction';
-import axios from 'axios';
 
 const Chatbot = () => {
   const [sessions, setSessions] = useState(() => {
@@ -31,7 +35,9 @@ const Chatbot = () => {
 
   const [messages, setMessages] = useState(() => sessions[currentSessionId] || []);
   const [userInput, setUserInput] = useState('');
-  const [isMenuOpen, setIsMenuOpen] = useState(true); // Control for sidebar visibility
+  const [isMenuOpen, setIsMenuOpen] = useState(true);
+  const [editSessionId, setEditSessionId] = useState(null);
+  const [newSessionName, setNewSessionName] = useState('');
   const chatEndRef = useRef(null);
 
   useEffect(() => {
@@ -53,23 +59,22 @@ const Chatbot = () => {
 
   const generateSessionId = () => {
     const now = new Date();
-    return now.toLocaleString(); // Generate a readable date-time string as session ID
+    return now.toLocaleString();
   };
 
   const handleSendMessage = () => {
     if (userInput.trim()) {
       const newMessage = { text: userInput, sender: 'user', type: 'text' };
       const updatedMessages = [...messages, newMessage];
-      setMessages(updatedMessages);
+  
+      // Ensure we update the current session only, no new session created here.
       updateSession(currentSessionId, updatedMessages);
-
+  
       const requestData = { text: userInput };
-
+  
       fetch('/post/route', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestData),
       })
         .then((response) => response.json())
@@ -81,24 +86,28 @@ const Chatbot = () => {
             route: data.response.route1,
           };
           const updatedMessagesWithBot = [...updatedMessages, botReply];
+  
+          // Update messages for the correct session only
           setMessages(updatedMessagesWithBot);
-          updateSession(currentSessionId, updatedMessagesWithBot);
+          updateSession(currentSessionId, updatedMessagesWithBot);  // Correct session
         })
-        .catch((error) => {
-          console.error('Error:', error);
+        .catch(() => {
           const errorMessage = {
             text: 'Sorry, an error occurred while processing your request.',
             sender: 'bot',
             type: 'text',
           };
           const updatedMessagesWithError = [...updatedMessages, errorMessage];
+  
+          // Make sure the current session remains consistent
           setMessages(updatedMessagesWithError);
           updateSession(currentSessionId, updatedMessagesWithError);
         });
-
-      setUserInput('');
+  
+      setUserInput('');  // Clear the input after sending
     }
   };
+  
 
   const updateSession = (sessionId, updatedMessages) => {
     setSessions((prevSessions) => ({
@@ -127,6 +136,15 @@ const Chatbot = () => {
     }
   };
 
+  const renameChat = (sessionId) => {
+    const updatedSessions = { ...sessions };
+    updatedSessions[newSessionName] = updatedSessions[sessionId];
+    delete updatedSessions[sessionId];
+    setSessions(updatedSessions);
+    setCurrentSessionId(newSessionName);
+    setEditSessionId(null);
+  };
+
   const toggleMenu = () => {
     setIsMenuOpen((prev) => !prev);
   };
@@ -140,7 +158,6 @@ const Chatbot = () => {
 
   return (
     <Flex height="100vh" backgroundColor="gray.50">
-      {/* Sidebar for Chat Sessions */}
       {isMenuOpen && (
         <Box width="25%" borderRight="1px solid lightgray" padding={4} overflowY="auto">
           <HStack justifyContent="space-between" marginBottom={4}>
@@ -173,25 +190,43 @@ const Chatbot = () => {
                 onClick={() => setCurrentSessionId(sessionId)}
               >
                 <Text>{sessionId}</Text>
-                <IconButton
-                  icon={<FaTrash />}
-                  size="sm"
-                  colorScheme="red"
-                  onClick={(e) => {
-                    e.stopPropagation(); // Prevent triggering session change
-                    deleteChat(sessionId);
-                  }}
-                  aria-label="Delete Chat"
-                />
+                <Menu>
+                  <MenuButton
+                    as={IconButton}
+                    icon={<FaEllipsisV />}
+                    size="sm"
+                    colorScheme="gray"
+                    aria-label="Options"
+                  />
+                  <MenuList>
+                    <MenuItem onClick={() => setEditSessionId(sessionId)}>
+                      Edit Name
+                    </MenuItem>
+                    <MenuItem onClick={() => deleteChat(sessionId)}>
+                      Delete Chat
+                    </MenuItem>
+                  </MenuList>
+                </Menu>
               </ListItem>
             ))}
           </List>
+
+          {editSessionId && (
+            <Flex marginTop={4}>
+              <Input
+                placeholder="New session name"
+                value={newSessionName}
+                onChange={(e) => setNewSessionName(e.target.value)}
+              />
+              <Button onClick={() => renameChat(editSessionId)} colorScheme="blue" marginLeft={2}>
+                Save
+              </Button>
+            </Flex>
+          )}
         </Box>
       )}
 
-      {/* Chat Area */}
       <Flex direction="column" width={isMenuOpen ? '75%' : '100%'} padding={4}>
-
         <Box flexGrow={1} overflowY="auto" padding={4}>
           {messages.length === 0 ? (
             <Center flexGrow={1} padding={4}>
@@ -199,7 +234,15 @@ const Chatbot = () => {
                 <Text fontSize="3xl" fontWeight="bold" textAlign="center" color="black">
                   Where would you like to go today?
                 </Text>
-                <Flex align="center" gap={2} width="100%" padding={2} backgroundColor="#F4F4F4" borderRadius="md" boxShadow="sm">
+                <Flex
+                  align="center"
+                  gap={2}
+                  width="100%"
+                  padding={2}
+                  backgroundColor="#F4F4F4"
+                  borderRadius="md"
+                  boxShadow="sm"
+                >
                   <Textarea
                     placeholder="Type your destination..."
                     value={userInput}
@@ -210,7 +253,6 @@ const Chatbot = () => {
                     borderRadius="lg"
                     color="black"
                     backgroundColor="#F4F4F4"
-                    _placeholder={{ color: 'gray.500' }}
                     resize="vertical"
                     maxHeight="150px"
                     borderColor="transparent"
@@ -223,9 +265,37 @@ const Chatbot = () => {
               </VStack>
             </Center>
           ) : (
-            <VStack spacing={4} align="stretch">
+            <VStack spacing={4} align="stretch" >
               {messages.map((message, index) => renderMessage(message, index))}
               <div ref={chatEndRef}></div>
+              <Flex
+                  align="center"
+                  gap={2}
+                  width="100%"
+                  padding={2}
+                  backgroundColor="#F4F4F4"
+                  borderRadius="md"
+                  boxShadow="sm"
+                >
+                  <Textarea
+                    placeholder="Type your destination..."
+                    value={userInput}
+                    onChange={(e) => setUserInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                    flex={1}
+                    minHeight="40px"
+                    borderRadius="lg"
+                    color="black"
+                    backgroundColor="#F4F4F4"
+                    resize="vertical"
+                    maxHeight="150px"
+                    borderColor="transparent"
+                    focusBorderColor="blue.300"
+                  />
+                  <Button colorScheme="blue" onClick={handleSendMessage} borderRadius="md" paddingX={6} height="40px">
+                    Send
+                  </Button>
+                </Flex>
             </VStack>
           )}
         </Box>

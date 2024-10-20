@@ -11,28 +11,110 @@ import {
   Text,
   Stack,
   VStack,
+  Tabs,
+  Tab,
+  TabList,
+  TabPanels,
+  TabPanel,
 } from '@chakra-ui/react';
 import {
   FaTimes,
   FaBars,
   FaWalking,
   FaBus,
-  FaTrain,
-  FaCar,
   FaBicycle,
+  FaCar,
   FaRobot,
 } from 'react-icons/fa';
 import {
   useJsApiLoader,
   GoogleMap,
   Marker,
-  Autocomplete,
   DirectionsRenderer,
   TrafficLayer,
+  Autocomplete,
 } from '@react-google-maps/api';
-import { GiBrain } from 'react-icons/gi';
+import Direction from './Direction'; // Import the Direction component
 
 const center = { lat: 48.8584, lng: 2.2945 };
+const mapStyles = [
+  {
+    elementType: 'geometry',
+    stylers: [{ color: '#212121' }],
+  },
+  {
+    elementType: 'labels.icon',
+    stylers: [{ visibility: 'off' }],
+  },
+  {
+    elementType: 'labels.text.fill',
+    stylers: [{ color: '#757575' }],
+  },
+  {
+    elementType: 'labels.text.stroke',
+    stylers: [{ color: '#212121' }],
+  },
+  {
+    featureType: 'administrative',
+    elementType: 'geometry',
+    stylers: [{ color: '#757575' }],
+  },
+  {
+    featureType: 'administrative.country',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: '#9e9e9e' }],
+  },
+  {
+    featureType: 'administrative.land_parcel',
+    stylers: [{ visibility: 'off' }],
+  },
+  {
+    featureType: 'landscape.man_made',
+    elementType: 'geometry',
+    stylers: [{ color: '#424242' }],
+  },
+  {
+    featureType: 'poi',
+    elementType: 'geometry',
+    stylers: [{ color: '#424242' }],
+  },
+  {
+    featureType: 'poi',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: '#bdbdbd' }],
+  },
+  {
+    featureType: 'road',
+    elementType: 'geometry.fill',
+    stylers: [{ color: '#2c2c2c' }],
+  },
+  {
+    featureType: 'road',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: '#8a8a8a' }],
+  },
+  {
+    featureType: 'road.arterial',
+    elementType: 'geometry',
+    stylers: [{ color: '#373737' }],
+  },
+  {
+    featureType: 'road.highway',
+    elementType: 'geometry',
+    stylers: [{ color: '#3c3c3c' }],
+  },
+  {
+    featureType: 'water',
+    elementType: 'geometry',
+    stylers: [{ color: '#000000' }],
+  },
+  {
+    featureType: 'water',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: '#3d3d3d' }],
+  },
+];
+
 
 function Home() {
   const { isLoaded } = useJsApiLoader({
@@ -51,6 +133,9 @@ function Home() {
   const [isTraffic, setIsTraffic] = useState(false);
   const [routeInfo, setRouteInfo] = useState(null);
   const [routeSteps, setRouteSteps] = useState([]);
+  const [selectedRouteType, setSelectedRouteType] = useState(0); // Track selected route type (0, 1, 2)
+
+
 
   const originRef = useRef();
   const destinationRef = useRef();
@@ -69,24 +154,37 @@ function Home() {
   }
 
 
+
   async function calculateRoute() {
     if (!originRef.current.value || !destinationRef.current.value) {
       return;
     }
-
     if (travelMode === 'AI') {
+
       try {
+        let routeTypeText = '';
+        switch (selectedRouteType) {
+          case 0:
+            routeTypeText = ' Allow multimodal transport where I can drive a car to a station, and prioritize the fastest route with reasonable travel time.';
+            break;
+          case 1:
+            routeTypeText = ' Allow multimodal transport where I can drive a car to a station, and optimize for the most cost-effective route while keeping travel time reasonable.';
+            break;
+          case 2:
+            routeTypeText = ' Include light physical activity for about 25 minutes, but avoid excessive travel time.';
+            break;
+          default:
+            routeTypeText = 'find a balanced route with no specific preference.';
+            break;
+        }
+
         const response = await fetch('/post/route', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            text:
-              'Give me a route from ' +
-              originRef.current.value +
-              ' to ' +
-              destinationRef.current.value,
+            text: `Give me a route from ${originRef.current.value} to ${destinationRef.current.value}. ${routeTypeText}`,
           }),
         });
 
@@ -97,23 +195,8 @@ function Home() {
         for (const subRoute of data.response.route1) {
           const { start, end, modeOfTransport } = subRoute;
 
-          let mode;
-          switch (modeOfTransport.toLowerCase()) {
-            case 'driving':
-              mode = window.google.maps.TravelMode.DRIVING;
-              break;
-            case 'transit':
-              mode = window.google.maps.TravelMode.TRANSIT;
-              break;
-            case 'bicycling':
-              mode = window.google.maps.TravelMode.BICYCLING;
-              break;
-            case 'walking':
-              mode = window.google.maps.TravelMode.WALKING;
-              break;
-            default:
-              mode = window.google.maps.TravelMode.DRIVING;
-          }
+          const mode = window.google.maps.TravelMode[modeOfTransport.toUpperCase()] ||
+            window.google.maps.TravelMode.DRIVING;
 
           const result = await directionsService.route({
             origin: start,
@@ -124,7 +207,7 @@ function Home() {
           if (result.status === 'OK') {
             allDirections.push(result);
           } else {
-            console.error('Directions request failed due to ', result.status);
+            console.error('Directions request failed:', result.status);
           }
         }
 
@@ -132,16 +215,14 @@ function Home() {
         setDirectionsResponse(null); // Clear the standard directions response
         setDistance(data.response.route1Info.distance);
         setDuration(`${data.response.route1Info.totalTime} mins`);
-        setIsTraffic(false);
         setRouteInfo(data.response.route1Info);
         setRouteSteps(data.response.route1);
 
-        // Adjust the map to fit all routes
         if (map && allDirections.length > 0) {
           computeAndFitBounds(allDirections);
         }
       } catch (error) {
-        console.error('Error fetching AI route:', error);
+        console.error('Error fetching route:', error);
       }
     } else {
       const directionsService = new window.google.maps.DirectionsService();
@@ -187,7 +268,6 @@ function Home() {
       }
     }
   }
-
   function computeAndFitBounds(directionsArray) {
     const bounds = new window.google.maps.LatLngBounds();
     directionsArray.forEach((response) => {
@@ -251,7 +331,7 @@ function Home() {
           bgColor="white"
           color="black"
         />
-  
+
         {showFilters && (
           <>
             <VStack spacing={2} mb={4}>
@@ -281,12 +361,12 @@ function Home() {
                   />
                 </Autocomplete>
               </Box>
-  
+
               <Button color="#6581BF" width="80%" onClick={calculateRoute}>
                 Calculate Route
               </Button>
             </VStack>
-  
+
             <ButtonGroup isAttached variant="outline" mb={4} width="100%">
               {travelModes.map((mode) => (
                 <IconButton
@@ -301,7 +381,35 @@ function Home() {
                 />
               ))}
             </ButtonGroup>
-  
+            {travelMode === 'AI' && <Tabs
+              onChange={(index) => setSelectedRouteType(index)}
+              variant="soft-rounded"
+              colorScheme="blue"
+            >
+              <TabList>
+                <Tab>Fastest</Tab>
+                <Tab>Cheapest</Tab>
+                <Tab>Healthiest</Tab>
+              </TabList>
+
+              <TabPanels>
+                <TabPanel>
+                  {routeInfo && (
+                    <Direction data={routeInfo} route={routeSteps} />
+                  )}
+                </TabPanel>
+                <TabPanel>
+                  {routeInfo && (
+                    <Direction data={routeInfo} route={routeSteps} />
+                  )}
+                </TabPanel>
+                <TabPanel>
+                  {routeInfo && (
+                    <Direction data={routeInfo} route={routeSteps} />
+                  )}
+                </TabPanel>
+              </TabPanels>
+            </Tabs>}
             <VStack align="flex-start" spacing={2} mt={2}>
               <HStack spacing={4} alignItems="center">
                 <Text
@@ -317,7 +425,7 @@ function Home() {
                   </Text>
                 )}
               </HStack>
-  
+
               {routeInfo && (
                 <Box mt={4}>
                   <Text fontSize="md" fontWeight="semibold" color="black">
@@ -335,7 +443,7 @@ function Home() {
                   )}
                 </Box>
               )}
-  
+
               {routeSteps && routeSteps.length > 0 && (
                 <Box mt={4} w="100%">
                   <Text fontSize="lg" fontWeight="bold" mb={2} color="black">
@@ -395,7 +503,7 @@ function Home() {
           </>
         )}
       </Box>
-  
+
       {/* Right side - Google Map */}
       <Box flex="1" position="relative" overflow="hidden">
         <GoogleMap
@@ -403,6 +511,7 @@ function Home() {
           zoom={15}
           mapContainerStyle={{ width: '100%', height: '100%' }}
           options={{
+            styles: mapStyles,
             zoomControl: true,
             streetViewControl: false,
             mapTypeControl: false,
@@ -411,8 +520,8 @@ function Home() {
           onLoad={(map) => setMap(map)}
         >
           <TrafficLayer />
-          <Marker position={center} />
-  
+
+
           {travelMode === 'AI' ? (
             directionsResponses &&
             directionsResponses.map((response, index) => (
@@ -434,7 +543,7 @@ function Home() {
       </Box>
     </Flex>
   );
-  
+
 
 }
 

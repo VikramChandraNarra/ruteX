@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Flex, Text, Icon, VStack, HStack } from '@chakra-ui/react';
-import { FaWalking, FaBus, FaBicycle, FaCar } from 'react-icons/fa';
+import { FaWalking, FaBus, FaBicycle, FaCar, FaDollarSign} from 'react-icons/fa';
 import { MdAlarm, MdArrowForward } from 'react-icons/md';
 import { useNavigate } from 'react-router-dom';
 
@@ -67,7 +67,7 @@ const Direction = ({ data, route }) => {
       {/* Details with Icons */}
       <VStack align="start" spacing={3}>
         {/* Efficiency */}
-        {data.efficiency && (
+        {data.efficiency != "null" && (
           <HStack spacing={3}>
             <Icon as={MdAlarm} color="red.500" boxSize={5} />
             <Text fontSize="md" color="black">
@@ -77,7 +77,7 @@ const Direction = ({ data, route }) => {
         )}
 
         {/* Health */}
-        {data.health && (
+        {data.health != "null" && (
           <HStack spacing={3}>
             <Icon as={FaWalking} color="green.500" boxSize={5} />
             <Text fontSize="md" color="black">
@@ -87,9 +87,9 @@ const Direction = ({ data, route }) => {
         )}
 
         {/* Effectiveness */}
-        {data.effectiveness && (
+        {data.effectiveness != "null" && (
           <HStack spacing={3}>
-            <Icon as={FaWalking} color="yellow.500" boxSize={5} />
+            <Icon as={FaDollarSign} color="yellow.500" boxSize={5} />
             <Text fontSize="md" color="black">
               <Text as="span" fontWeight="bold">{data.effectiveness}</Text>
             </Text>
