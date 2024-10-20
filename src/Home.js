@@ -133,7 +133,7 @@ function Home() {
   const [isTraffic, setIsTraffic] = useState(false);
   const [routeInfo, setRouteInfo] = useState(null);
   const [routeSteps, setRouteSteps] = useState([]);
-  const [selectedRouteType, setSelectedRouteType] = useState(0); // Track selected route type (0, 1, 2)
+  const [selectedRouteType, setSelectedRouteType] = useState(1); // Track selected route type (0, 1, 2)
 
 
 
@@ -154,12 +154,41 @@ function Home() {
   }
 
 
+  function clearRoute() {
+    setDirectionsResponse(null);
+    setDirectionsResponses(null);
+    setDistance('');
+    setDuration('');
+    setSteps([]);
+    setIsTraffic(false);
+    setRouteInfo(null);
+    setRouteSteps([]);
+  
+    // Check if originRef and destinationRef are defined before accessing their value
+    if (originRef.current) {
+      originRef.current.value = '';
+    }
+    if (destinationRef.current) {
+      destinationRef.current.value = '';
+    }
+  }
+  
+
+
 
   async function calculateRoute() {
     if (!originRef.current.value || !destinationRef.current.value) {
       return;
     }
     if (travelMode === 'AI') {
+      setDirectionsResponse(null);
+      setDirectionsResponses(null);
+      setDistance('');
+      setDuration('');
+      setSteps([]);
+      setIsTraffic(false);
+      setRouteInfo(null);
+      setRouteSteps([]);
 
       try {
         let routeTypeText = '';
@@ -289,7 +318,6 @@ function Home() {
     setRouteInfo(null);
     setRouteSteps([]);
     originRef.current.value = '';
-    destinationRef.current.value = '';
   }
 
   function getTransportIcon(mode, isSelected) {
@@ -381,35 +409,40 @@ function Home() {
                 />
               ))}
             </ButtonGroup>
-            {travelMode === 'AI' && <Tabs
-              onChange={(index) => setSelectedRouteType(index)}
-              variant="soft-rounded"
-              colorScheme="blue"
-            >
-              <TabList>
-                <Tab>Fastest</Tab>
-                <Tab>Cheapest</Tab>
-                <Tab>Healthiest</Tab>
-              </TabList>
+            {travelMode === 'AI' && (
+  <Flex 
+    justify="center" // Center horizontally
+    align="center" // Center vertically
+    w="100%" // Ensure it takes full width
+    mt={4} // Optional margin from the top
+  >
+    <Tabs
+      onChange={(index) => setSelectedRouteType(index)}
+      variant="soft-rounded"
+      colorScheme="blue"
+      
+      defaultIndex={1} // Set the default tab to be 'Cheapest'
+    >
+      <TabList>
+        <Tab>Fastest</Tab>
+        <Tab>Cheapest</Tab>
+        <Tab>Healthiest</Tab>
+      </TabList>
 
-              <TabPanels>
-                <TabPanel>
-                  {routeInfo && (
-                    <Direction data={routeInfo} route={routeSteps} />
-                  )}
-                </TabPanel>
-                <TabPanel>
-                  {routeInfo && (
-                    <Direction data={routeInfo} route={routeSteps} />
-                  )}
-                </TabPanel>
-                <TabPanel>
-                  {routeInfo && (
-                    <Direction data={routeInfo} route={routeSteps} />
-                  )}
-                </TabPanel>
-              </TabPanels>
-            </Tabs>}
+      <TabPanels>
+        <TabPanel>
+          {routeInfo && <Direction data={routeInfo} route={routeSteps} />}
+        </TabPanel>
+        <TabPanel>
+          {routeInfo && <Direction data={routeInfo} route={routeSteps} />}
+        </TabPanel>
+        <TabPanel>
+          {routeInfo && <Direction data={routeInfo} route={routeSteps} />}
+        </TabPanel>
+      </TabPanels>
+    </Tabs>
+  </Flex>
+)}
             <VStack align="flex-start" spacing={2} mt={2}>
               <HStack spacing={4} alignItems="center">
                 <Text

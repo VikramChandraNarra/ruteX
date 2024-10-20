@@ -1,11 +1,12 @@
 {
   "name": "rutex",
   "version": "0.1.0",
-  "proxy":"http://localhost:8000",
+  "proxy": "http://localhost:8000",
   "private": true,
   "dependencies": {
     "@chakra-ui/icons": "^2.2.4",
     "@chakra-ui/react": "^2.10.3",
+    "@deepgram/sdk": "^3.8.1",
     "@emotion/react": "^11.13.3",
     "@emotion/styled": "^11.13.0",
     "@react-google-maps/api": "^2.20.3",

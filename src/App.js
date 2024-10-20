@@ -30,7 +30,6 @@ function App() {
             <Route path="/map" element={<Map />} />
             
             {/* Speech and Voice Routes */}
-            <Route path="/speech" element={<SpeechToText />} />
             <Route path="/voice" element={<Voice />} />
 
             {/* Loading Route */}

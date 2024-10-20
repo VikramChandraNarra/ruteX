@@ -17,10 +17,50 @@ import {
   MenuList,
   MenuItem,
   Input,
+  Spinner,
 } from '@chakra-ui/react';
 import { FaBars, FaPlus, FaEllipsisV } from 'react-icons/fa';
 import Message from './Message';
 import Direction from './Direction';
+import { keyframes } from '@emotion/react';
+
+// Bounce animation keyframes (from Voice.js)
+const bounce = keyframes`
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1); }
+`;
+
+// Loading Animation Component
+const LoadingAnimation = () => (
+  <Flex justify="center" align="center" height="50px">
+    <Box
+      as="span"
+      animation={`${bounce} 1.4s infinite`}
+      mr="4px"
+      bg="teal.500"
+      borderRadius="50%"
+      width="10px"
+      height="10px"
+    />
+    <Box
+      as="span"
+      animation={`${bounce} 1.4s infinite 0.2s`}
+      mr="4px"
+      bg="teal.500"
+      borderRadius="50%"
+      width="10px"
+      height="10px"
+    />
+    <Box
+      as="span"
+      animation={`${bounce} 1.4s infinite 0.4s`}
+      bg="teal.500"
+      borderRadius="50%"
+      width="10px"
+      height="10px"
+    />
+  </Flex>
+);
 
 const Chatbot = () => {
   const [sessions, setSessions] = useState(() => {
@@ -38,6 +78,7 @@ const Chatbot = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(true);
   const [editSessionId, setEditSessionId] = useState(null);
   const [newSessionName, setNewSessionName] = useState('');
+  const [isLoading, setIsLoading] = useState(false); // Add loading state
   const chatEndRef = useRef(null);
 
   useEffect(() => {
@@ -66,12 +107,12 @@ const Chatbot = () => {
     if (userInput.trim()) {
       const newMessage = { text: userInput, sender: 'user', type: 'text' };
       const updatedMessages = [...messages, newMessage];
-  
-      // Ensure we update the current session only, no new session created here.
+
       updateSession(currentSessionId, updatedMessages);
-  
+      setIsLoading(true); // Start loading animation
+
       const requestData = { text: userInput };
-  
+
       fetch('/post/route', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -86,10 +127,19 @@ const Chatbot = () => {
             route: data.response.route1,
           };
           const updatedMessagesWithBot = [...updatedMessages, botReply];
-  
-          // Update messages for the correct session only
+
+          // Check if steps are still needed
+          if (data.response.route1Info.stepsNeeded > 0) {
+            const stepsMessage = {
+              text: `Looks like you still need ${data.response.route1Info.stepsNeeded} steps to meet your daily goal. Would you like to get some steps in on your way?`,
+              sender: 'bot',
+              type: 'text',
+            };
+            updatedMessagesWithBot.push(stepsMessage); // Add follow-up message
+          }
+
           setMessages(updatedMessagesWithBot);
-          updateSession(currentSessionId, updatedMessagesWithBot);  // Correct session
+          updateSession(currentSessionId, updatedMessagesWithBot);
         })
         .catch(() => {
           const errorMessage = {
@@ -98,16 +148,17 @@ const Chatbot = () => {
             type: 'text',
           };
           const updatedMessagesWithError = [...updatedMessages, errorMessage];
-  
-          // Make sure the current session remains consistent
+
           setMessages(updatedMessagesWithError);
           updateSession(currentSessionId, updatedMessagesWithError);
+        })
+        .finally(() => {
+          setIsLoading(false); // Stop loading animation
         });
-  
-      setUserInput('');  // Clear the input after sending
+
+      setUserInput(''); // Clear input
     }
   };
-  
 
   const updateSession = (sessionId, updatedMessages) => {
     setSessions((prevSessions) => ({
@@ -136,19 +187,6 @@ const Chatbot = () => {
     }
   };
 
-  const renameChat = (sessionId) => {
-    const updatedSessions = { ...sessions };
-    updatedSessions[newSessionName] = updatedSessions[sessionId];
-    delete updatedSessions[sessionId];
-    setSessions(updatedSessions);
-    setCurrentSessionId(newSessionName);
-    setEditSessionId(null);
-  };
-
-  const toggleMenu = () => {
-    setIsMenuOpen((prev) => !prev);
-  };
-
   const renderMessage = (message, index) => {
     if (message.type === 'route') {
       return <Direction key={index} data={message.data} route={message.route} />;
@@ -160,145 +198,40 @@ const Chatbot = () => {
     <Flex height="100vh" backgroundColor="gray.50">
       {isMenuOpen && (
         <Box width="25%" borderRight="1px solid lightgray" padding={4} overflowY="auto">
-          <HStack justifyContent="space-between" marginBottom={4}>
-            <IconButton
-              icon={<FaBars />}
-              onClick={toggleMenu}
-              aria-label="Collapse Menu"
-              size="md"
-              colorScheme="blue"
-            />
-            <IconButton
-              icon={<FaPlus />}
-              onClick={startNewChat}
-              aria-label="Start New Chat"
-              size="md"
-              colorScheme="green"
-            />
-          </HStack>
-          <List spacing={2}>
-            {Object.keys(sessions).map((sessionId) => (
-              <ListItem
-                key={sessionId}
-                padding={2}
-                borderRadius="md"
-                backgroundColor={sessionId === currentSessionId ? 'blue.100' : 'white'}
-                cursor="pointer"
-                display="flex"
-                justifyContent="space-between"
-                alignItems="center"
-                onClick={() => setCurrentSessionId(sessionId)}
-              >
-                <Text>{sessionId}</Text>
-                <Menu>
-                  <MenuButton
-                    as={IconButton}
-                    icon={<FaEllipsisV />}
-                    size="sm"
-                    colorScheme="gray"
-                    aria-label="Options"
-                  />
-                  <MenuList>
-                    <MenuItem onClick={() => setEditSessionId(sessionId)}>
-                      Edit Name
-                    </MenuItem>
-                    <MenuItem onClick={() => deleteChat(sessionId)}>
-                      Delete Chat
-                    </MenuItem>
-                  </MenuList>
-                </Menu>
-              </ListItem>
-            ))}
-          </List>
-
-          {editSessionId && (
-            <Flex marginTop={4}>
-              <Input
-                placeholder="New session name"
-                value={newSessionName}
-                onChange={(e) => setNewSessionName(e.target.value)}
-              />
-              <Button onClick={() => renameChat(editSessionId)} colorScheme="blue" marginLeft={2}>
-                Save
-              </Button>
-            </Flex>
-          )}
+          {/* Menu Content */}
         </Box>
       )}
 
       <Flex direction="column" width={isMenuOpen ? '75%' : '100%'} padding={4}>
         <Box flexGrow={1} overflowY="auto" padding={4}>
           {messages.length === 0 ? (
-            <Center flexGrow={1} padding={4}>
-              <VStack spacing={4} align="center">
-                <Text fontSize="3xl" fontWeight="bold" textAlign="center" color="black">
-                  Where would you like to go today?
-                </Text>
-                <Flex
-                  align="center"
-                  gap={2}
-                  width="100%"
-                  padding={2}
-                  backgroundColor="#F4F4F4"
-                  borderRadius="md"
-                  boxShadow="sm"
-                >
-                  <Textarea
-                    placeholder="Type your destination..."
-                    value={userInput}
-                    onChange={(e) => setUserInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                    flex={1}
-                    minHeight="40px"
-                    borderRadius="lg"
-                    color="black"
-                    backgroundColor="#F4F4F4"
-                    resize="vertical"
-                    maxHeight="150px"
-                    borderColor="transparent"
-                    focusBorderColor="blue.300"
-                  />
-                  <Button colorScheme="blue" onClick={handleSendMessage} borderRadius="md" paddingX={6} height="40px">
-                    Send
-                  </Button>
-                </Flex>
+            <Center flexGrow={1}>
+              <VStack spacing={4}>
+                <Text fontSize="3xl" fontWeight="bold">Where would you like to go today?</Text>
               </VStack>
             </Center>
           ) : (
-            <VStack spacing={4} align="stretch" >
+            <VStack spacing={4} align="stretch">
               {messages.map((message, index) => renderMessage(message, index))}
-              <div ref={chatEndRef}></div>
-              <Flex
-                  align="center"
-                  gap={2}
-                  width="100%"
-                  padding={2}
-                  backgroundColor="#F4F4F4"
-                  borderRadius="md"
-                  boxShadow="sm"
-                >
-                  <Textarea
-                    placeholder="Type your destination..."
-                    value={userInput}
-                    onChange={(e) => setUserInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                    flex={1}
-                    minHeight="40px"
-                    borderRadius="lg"
-                    color="black"
-                    backgroundColor="#F4F4F4"
-                    resize="vertical"
-                    maxHeight="150px"
-                    borderColor="transparent"
-                    focusBorderColor="blue.300"
-                  />
-                  <Button colorScheme="blue" onClick={handleSendMessage} borderRadius="md" paddingX={6} height="40px">
-                    Send
-                  </Button>
-                </Flex>
+              {isLoading && <LoadingAnimation />}
+              <div ref={chatEndRef} />
             </VStack>
           )}
         </Box>
+
+        {/* Input Section */}
+        <Flex gap={2} padding={3} backgroundColor="white" borderTop="1px solid #E2E8F0">
+          <Textarea
+            placeholder="Type your message..."
+            value={userInput}
+            onChange={(e) => setUserInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+            flex={1}
+            minHeight="50px"
+            borderRadius="md"
+          />
+          <Button onClick={handleSendMessage} colorScheme="blue">Send</Button>
+        </Flex>
       </Flex>
     </Flex>
   );
