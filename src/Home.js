@@ -76,13 +76,13 @@ function Home() {
 
     if (travelMode === 'AI') {
       try {
-        const response = await fetch('http://127.0.0.1:5000/generate_route', {
+        const response = await fetch('/post/route', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            input:
+            text:
               'Give me a route from ' +
               originRef.current.value +
               ' to ' +
@@ -94,7 +94,7 @@ function Home() {
         const directionsService = new window.google.maps.DirectionsService();
         const allDirections = [];
 
-        for (const subRoute of data.route1) {
+        for (const subRoute of data.response.route1) {
           const { start, end, modeOfTransport } = subRoute;
 
           let mode;
@@ -130,11 +130,11 @@ function Home() {
 
         setDirectionsResponses(allDirections);
         setDirectionsResponse(null); // Clear the standard directions response
-        setDistance(data.route1Info.distance);
-        setDuration(`${data.route1Info.totalTime} mins`);
+        setDistance(data.response.route1Info.distance);
+        setDuration(`${data.response.route1Info.totalTime} mins`);
         setIsTraffic(false);
-        setRouteInfo(data.route1Info);
-        setRouteSteps(data.route1);
+        setRouteInfo(data.response.route1Info);
+        setRouteSteps(data.response.route1);
 
         // Adjust the map to fit all routes
         if (map && allDirections.length > 0) {

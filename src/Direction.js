@@ -19,7 +19,7 @@ const Direction = ({ data, route }) => {
     // Pass the data to the new route
     navigate('/map', { state: { route } });
 };
-
+  console.log(data)
   const modes = data.expression.split('|').map((mode) => mode.trim()); // Split and clean the expression
 
   return (

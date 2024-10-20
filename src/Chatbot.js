@@ -63,9 +63,9 @@ const Chatbot = () => {
       setMessages(updatedMessages);
       updateSession(currentSessionId, updatedMessages);
 
-      const requestData = { input: userInput };
+      const requestData = { text: userInput };
 
-      fetch('http://127.0.0.1:5000/generate_route', {
+      fetch('/post/route', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -77,8 +77,8 @@ const Chatbot = () => {
           const botReply = {
             type: 'route',
             sender: 'bot',
-            data: data.route1Info,
-            route: data.route1,
+            data: data.response.route1Info,
+            route: data.response.route1,
           };
           const updatedMessagesWithBot = [...updatedMessages, botReply];
           setMessages(updatedMessagesWithBot);
