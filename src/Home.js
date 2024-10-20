@@ -36,7 +36,7 @@ import {
 } from '@react-google-maps/api';
 import Direction from './Direction'; // Import the Direction component
 
-const center = { lat: 48.8584, lng: 2.2945 };
+const center = { lat: 37.7842, lng: -122.4019 };
 const mapStyles = [
   {
     elementType: 'geometry',
@@ -544,10 +544,9 @@ function Home() {
           zoom={15}
           mapContainerStyle={{ width: '100%', height: '100%' }}
           options={{
-            styles: mapStyles,
             zoomControl: true,
-            streetViewControl: false,
-            mapTypeControl: false,
+            streetViewControl: true,
+            mapTypeControl: true,
             fullscreenControl: false,
           }}
           onLoad={(map) => setMap(map)}
